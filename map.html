@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+		<title>集装箱实时动态</title>
+		<link rel="stylesheet" href="http://api.map.baidu.com/library/SearchInfoWindow/1.5/src/SearchInfoWindow_min.css" />
+		<script type="text/javascript" src="http://api.map.baidu.com/library/GeoUtils/1.2/src/GeoUtils_min.js"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=m7Kvhs7Z8nfFKEOgBg7rEvDDj9f1rKbk"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/library/SearchInfoWindow/1.5/src/SearchInfoWindow_min.js"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/library/TextIconOverlay/1.2/src/TextIconOverlay_min.js"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/library/MarkerClusterer/1.2/src/MarkerClusterer_min.js"></script>
+		<script type="text/javascript" src="http://api.map.baidu.com/library/GeoUtils/1.2/src/GeoUtils_min.js"></script>
+		<style type="text/css">
+			body,
+			html {
+				width: 100%;
+				height: 100%;
+				margin: 0;
+			}
+			.topBar {
+				padding: 15px 20px;
+				position: relative;
+				z-index: 200;
+			}
+			.iconBox img {
+				vertical-align: middle;
+			}
+			.boxMsg {
+				width: 210px;
+				background-color: #fff;
+				border-left: 1px solid;
+				border-right: 1px solid;
+				overflow: hidden;
+			}
+			.boxMsg li {
+				border-bottom: 1px solid;
+				padding: 3px;
+				padding-left: 10px;
+			}
+			.boxMsg p {
+				padding-left: 100px;
+			}
+			.boxMsg h3 {
+				font-weight: bold;
+			}
+			#allmap {
+				height: 90%;
+				border-top: 1px solid #00E8D7;
+			}
+			.load-img {
+				width: 124px;
+				height: 124px;
+				background: url(images/loading.gif) no-repeat;
+				position: fixed;
+				top: 50%;
+				left: 50%;
+				margin-top: -62px;
+				margin-left: -62px;
+				z-index: 99999;
+			}
+			.drop-icon {
+				position: absolute;
+				right: 80px;
+				bottom: -32px;
+				width: 32px;
+				height: 32px;
+				z-index: 12000;
+				border-radius: 50%;
+				overflow: hidden;
+			}
+			.drop-icon img {
+				width: 100%;
+			}
+			.sj {
+				height: 153px;
+				width: 210px;
+				position: absolute;
+				top: -90px;
+				right: 20px;
+				z-index: 99;
+			}
+			.tabBtn {
+				position: fixed;
+				bottom: 30px;
+				right: 30px;
+				padding: 7px;
+				color: #fff;
+				background: #f66;
+				cursor: pointer;
+				font-size: 13px;
+				z-index: 999;
+			}
+			.tabBtn:hover {
+				background: #F14E0D;
+			}
+			.statisticsBox {
+				width: 0;
+				height: 0;
+				background: #fff;
+				position: absolute;
+				bottom: 46px;
+				right: 30px;
+			}
+			#closeBtn {
+				width: 16px;
+				height: 16px;
+				float: right;
+				background: #f66;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="box" class="topBar fix" style="background: #F4F4F4;">
+			<div class="sj">
+				<ul class="boxMsg" style="height: 0;overflow: auto;">
+					<div class="drop-icon">
+						<img src="images/drop-icon.gif" />
+					</div>
+					<li style="padding-top: 20px;">
+						<b style="font-size: 14px;">箱子总计：</b>
+						<em style="margin-left: 58px;" id="totalNumber"></em>
+					</li>
+					<li>
+						<h3>离线箱子：</h3>
+						<p>
+							<b>空箱：</b>
+							<em id='empty_box_0'></em>
+						</p>
+						<p>
+							<b>重箱：</b>
+							<em id='heavy_box_0'></em>
+						</p>
+					</li>
+					<li>
+						<h3>在线箱子：</h3>
+						<p>
+							<b>空箱：</b>
+							<em id='empty_box_1'></em>
+						</p>
+						<p>
+							<b>重箱：</b>
+							<em id='heavy_box_1'></em>
+						</p>
+					</li>
+				</ul>
+			</div>
+			<div class="fl" style="position: relative;">
+				集装箱号：<input type="text" name="" id="boxNum" />
+				<a href="#" style="margin-top: -3px;" id="search_box" class="easyui-linkbutton" data-options="iconCls:'icon-search'">查找</a>
+				<a id="fangda" title="全屏浏览"></a>
+			</div>
+			<div class="fr iconBox">
+				<span>箱子状态图标：</span>
+				<img src="images/car_icon2.png" />
+				<span>空箱在线</span>
+				<img src="images/car-icon3.png" />
+				<span>空箱离线</span>
+				<img src="images/car_icon.png" />
+				<span>重箱在线</span>
+				<img src="images/car-icon1.png" />
+				<span>重箱离线</span>
+				<span style="margin-left: 40px;">库区：</span>
+				<img src="images/can.png" />
+			</div>
+		</div>
+		<div id="allmap"></div>
+		<div class="load-img"></div>
+	</body>
+	<script src="jquery.min.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript">
+		$(function() {
+			setTimeout(function() {
+				$('.load-img').hide();
+			}, 3000);
+			$('.sj').hover(function() {
+				$('.sj').stop().animate({
+					'top': 63
+				}, 500);
+				$('.boxMsg').stop().animate({
+					'height': 153
+				}, 160);
+
+			}, function() {
+				$('.boxMsg').stop().animate({
+					'height': 0
+				}, 2000);
+				$('.sj').stop().animate({
+					'top': -90
+				}, 500);
+			});
+			var boxNoArr = [];
+			var map = new BMap.Map("allmap");
+			map.centerAndZoom(new BMap.Point(116.331398, 39.897445), 5);
+			map.enableScrollWheelZoom(true);
+			var _cursor = map.getDefaultCursor(); //获取默认手势
+			var navigationControl = new BMap.NavigationControl({
+				// 靠左上角位置
+				anchor: BMAP_ANCHOR_TOP_LEFT,
+				// LARGE类型
+				type: BMAP_NAVIGATION_CONTROL_LARGE,
+				// 启用显示定位
+				enableGeolocation: true
+			});
+			var geoc = new BMap.Geocoder();
+			map.addControl(navigationControl);
+			var marker = null;
+			//添加自定义覆盖物
+			function ComplexCustomOverlay(point, text, L) {
+				this._point = point;
+				this._text = text;
+				this._L = L;
+			}
+			ComplexCustomOverlay.prototype = new BMap.Overlay();
+			ComplexCustomOverlay.prototype.addEventListener = function(event, fun) {
+				this._div['on' + event] = fun;
+			}
+			ComplexCustomOverlay.prototype.initialize = function(map) {
+				this._map = map;
+				var div = this._div = document.createElement("div");
+				div.style.position = "absolute";
+				div.style.zIndex = BMap.Overlay.getZIndex(this._point.lat);
+				div.style.backgroundColor = "#009900";
+				div.style.borderRadius = "50%";
+				div.style.color = "white";
+				div.style.height = "+" + this._L + "px";
+				div.style.width = "+" + this._L + "px";
+				div.style.textAlign = "center";
+				div.style.cursor = "pointer";
+				div.style.lineHeight = '22px';
+				div.style.opacity = 0.7;
+				div.style.MozUserSelect = "none";
+				div.style.fontSize = "18px";
+				var p = document.createElement("p");
+				p.style.marginTop = '16px'
+				p.innerHTML = this._text;
+				div.appendChild(p);
+				var that = this;
+				var arrow = this._arrow = document.createElement("div");
+				arrow.style.position = "absolute";
+				arrow.style.left = "50px";
+				div.onmouseover = function() {
+					this.style.backgroundColor = "#FF4600";
+				}
+				div.onmouseout = function() {
+					this.style.backgroundColor = "#009900";
+				}
+				map.getPanes().labelPane.appendChild(div);
+				return div;
+			}
+			ComplexCustomOverlay.prototype.draw = function() {
+				var map = this._map;
+				var pixel = map.pointToOverlayPixel(this._point);
+				this._div.style.left = pixel.x - parseInt(this._arrow.style.left) + "px";
+				this._div.style.top = pixel.y - 30 + "px";
+			}
+			//自定义覆盖物结束
+
+			//各个大区
+			var huabei = new BMap.Point(116.331398, 39.897445);
+			var changsanjiao = new BMap.Point(121.758601, 30.971628);
+			var huanan = new BMap.Point(111.805663, 23.208133);
+			var shandong = new BMap.Point(120.19483, 36.738498);
+			var xibei = new BMap.Point(103.581928, 37.009179);
+			var dongbei = new BMap.Point(123.929338, 42.048895);
+			var huazhong = new BMap.Point(111.216949, 30.015673);
+			var xinan = new BMap.Point(106.525495, 26.469829);
+			var huadong = new BMap.Point(116.52457, 29.268334);
+			var xinjiangArea = new BMap.Point(86.423804, 42.64512);
+			var xizangArea = new BMap.Point(89.956085, 30.654031);
+			//各个省
+			var hebei = new BMap.Point(114.82923, 38.059467);
+			var shanxi = new BMap.Point(112.400787, 37.76795);
+			var neimeng = new BMap.Point(112.253609, 41.327473);
+			var liaoning = new BMap.Point(123.770317, 41.989731);
+			var heilongjiang = new BMap.Point(126.6035, 45.66412);
+			var jilin = new BMap.Point(125.573252, 44.094568);
+			var shanghai = new BMap.Point(121.709819, 31.066699);
+			var jiangsu = new BMap.Point(118.91343, 31.918011);
+			var zhejiang = new BMap.Point(120.238036, 30.015673);
+			var anhui = new BMap.Point(117.404852, 31.603624);
+			var fujian = new BMap.Point(118.950225, 25.700392);
+			var jiangxi = new BMap.Point(116.374603, 28.206217);
+			var guangdong = new BMap.Point(114.009749, 23.479946);
+			var guangxi = new BMap.Point(108.43617, 23.403556);
+			var hainan = new BMap.Point(110.20231, 18.98788);
+			var henan = new BMap.Point(113.734591, 34.447098);
+			var hubei = new BMap.Point(113.431036, 31.035019);
+			var hunan = new BMap.Point(112.768733, 27.814333);
+			var sichuan = new BMap.Point(103.202139, 30.27152);
+			var guizhou = new BMap.Point(107.175955, 27.092162);
+			var yunnan = new BMap.Point(102.319069, 24.561498);
+			var chongqing = new BMap.Point(107.396722, 29.501976);
+			var xizang = new BMap.Point(89.956085, 30.654031);
+			var shanxisheng = new BMap.Point(108.721328, 33.965597);
+			var gansu = new BMap.Point(104.085209, 35.72494);
+			var qinghai = new BMap.Point(98.860377, 36.619945);
+			var ningxia = new BMap.Point(105.83324, 38.596373);
+			var xinjiang = new BMap.Point(86.423804, 42.64512);
+			var tianjin = new BMap.Point(117.598441, 39.113585);
+			var beijing = new BMap.Point(116.887775, 39.90453);
+
+			//添加大区遮罩
+			function addMark(point, text, L, leval) {
+				var myCompOverlay = new ComplexCustomOverlay(point, text, L);
+				map.addOverlay(myCompOverlay);
+				clickBig(myCompOverlay, point, leval);
+			}
+			//点击放大
+			function clickBig(mark, point, leval) {
+				mark.addEventListener('click', function() {
+					map.centerAndZoom(point, leval);
+				});
+			}
+
+			//各个大区数组
+			var huabeiArr = [];
+			var changsanjiaoArr = [];
+			var huananArr = [];
+			var shandongArr = [];
+			var xibeiArr = [];
+			var dongbeiArr = [];
+			var huazhongArr = [];
+			var xinanArr = [];
+			var huadongArr = [];
+
+			//各个省
+			var hebeiArr = [];
+			var shanxiArr = [];
+			var neimengArr = [];
+			var liaoningArr = [];
+			var heilongjiangArr = [];
+			var jilinArr = [];
+			var shanghaiArr = [];
+			var jiangsuArr = [];
+			var zhejiangArr = [];
+			var anhuiArr = [];
+			var fujianArr = [];
+			var jiangxiArr = [];
+			var guangdongArr = [];
+			var guangxiArr = [];
+			var hainanArr = [];
+			var henanArr = [];
+			var hubeiArr = [];
+			var hunanArr = [];
+			var sichuanArr = [];
+			var guizhouArr = [];
+			var yunnanArr = [];
+			var chongqingArr = [];
+			var xizangArr = [];
+			var shanxishengArr = [];
+			var gansuArr = [];
+			var qinghaiArr = [];
+			var ningxiaArr = [];
+			var xinjiangArr = [];
+			var tianjinArr = [];
+			var beijingArr = [];
+
+			//阻止冒泡
+			function stopProp(e) {
+				var oEvent = e || event;
+				if(oEvent.stopPropagation) {
+					oEvent.stopPropagation();
+				} else {
+					oEvent.cancelBubble = true;
+				}
+			}
+			//清空所以点
+			function clearAllPoint() {
+				var allOverlay = map.getOverlays();
+				for(var i = 0; i < allOverlay.length; i++) {
+					map.removeOverlay(allOverlay[i]);
+				}
+			}
+
+			//显示可视区域内的标注
+			function addMymarkers() {
+				for(i = 0; i < markers.length; i++) {
+					var result = BMapLib.GeoUtils.isPointInRect(markers[i].point, map.getBounds());
+					if(result == true) map.addOverlay(markers[i]);
+					else map.removeOverlay(markers[i]);
+				}
+			}
+
+			function removeMymarkers() {
+				for(i = 0; i < markers.length; i++) {
+					map.removeOverlay(markers[i]);
+				}
+			}
+			//查看车辆信息
+			var markers = [];
+			//			var coefficient = ;
+			$.ajax({
+				type: "get",
+				url: 'jizhuangxiang_data.js',
+				async: true,
+				success: function(data) {
+					var res = JSON.parse(data);
+					var start = new Date().getTime(); //起始时间
+					var geshu = 0;
+					var myGeo = new BMap.Geocoder();
+					for(var l = 0; l < res.length; l++) {
+						boxNoArr.push(res[l].boxNo);
+						var carPoint = new BMap.Point(res[l].longitude, res[l].latitude);
+						if(res[l].location != null && res[l].location != ',') {
+							var province = res[l].location.split(',')[0];
+							if(province.indexOf('北京市') >= 0) {
+								huabeiArr.push(carPoint);
+								beijingArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('天津市') >= 0) {
+								huabeiArr.push(carPoint);
+								tianjinArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('河北省') >= 0) {
+								huabeiArr.push(carPoint);
+								hebeiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('山西省') >= 0) {
+								huabeiArr.push(carPoint);
+								shanxiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('内蒙古自治区') >= 0) {
+								huabeiArr.push(carPoint);
+								neimengArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('上海市') >= 0) {
+								changsanjiaoArr.push(carPoint);
+								shanghaiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('江苏省') >= 0) {
+								changsanjiaoArr.push(carPoint);
+								jiangsuArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('浙江省') >= 0) {
+								changsanjiaoArr.push(carPoint);
+								zhejiangArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('福建省') >= 0) {
+								huadongArr.push(carPoint);
+								fujianArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('江西省') >= 0) {
+								huadongArr.push(carPoint);
+								jiangxiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('安徽省') >= 0) {
+								huadongArr.push(carPoint);
+								anhuiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('广东省') >= 0) {
+								huananArr.push(carPoint);
+								guangdongArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('海南省') >= 0) {
+								huananArr.push(carPoint);
+								hainanArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('广西壮族自治区') >= 0) {
+								huananArr.push(carPoint);
+								guangxiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('山东省') >= 0) {
+								huadongArr.push(carPoint);
+								shandongArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('甘肃省') >= 0) {
+								xibeiArr.push(carPoint);
+								gansuArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('宁夏回族自治区') >= 0) {
+								xibeiArr.push(carPoint);
+								ningxiaArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('青海省') >= 0) {
+								xibeiArr.push(carPoint);
+								qinghaiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('陕西省') >= 0) {
+								xibeiArr.push(carPoint);
+								shanxiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('辽宁省') >= 0) {
+								dongbeiArr.push(carPoint);
+								liaoningArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('吉林省') >= 0) {
+								dongbeiArr.push(carPoint);
+								jilinArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('黑龙江省') >= 0) {
+								dongbeiArr.push(carPoint);
+								heilongjiangArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('河南省') >= 0) {
+								huazhongArr.push(carPoint);
+								henanArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('湖北省') >= 0) {
+								huazhongArr.push(carPoint);
+								hubeiArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('湖南省') >= 0) {
+								huazhongArr.push(carPoint);
+								hunanArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('四川省') >= 0) {
+								xinanArr.push(carPoint);
+								sichuanArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('云南省') >= 0) {
+								xinanArr.push(carPoint);
+								yunnanArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('贵州省') >= 0) {
+								xinanArr.push(carPoint);
+								guizhouArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('重庆市') >= 0) {
+								xinanArr.push(carPoint);
+								chongqingArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('西藏自治区') >= 0) {
+								//xinanArr.push(carPoint);
+								xizangArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							if(province.indexOf('新疆维吾尔自治区') >= 0) {
+								xinjiangArr.push(carPoint);
+								geshu = geshu + 1;
+							}
+							var number = res[l].boxNo;
+
+							var nowState = res[l].nowState;
+							var state = res[l].state;
+							var nowTime = new Date(res[l].daUp).toLocaleString().replace(/\//g, "-");
+
+							if(typeof(res[l].startPoint) == "undefined") {
+								res[l].startPoint = "未知";
+							}
+							var startPoint = res[l].startPoint;
+
+							if(typeof(res[l].endPoint) == "undefined") {
+								res[l].endPoint = "未知";
+							}
+							var endPoint = res[l].endPoint;
+
+							carMsg(carPoint, number, startPoint, endPoint, nowState, state, nowTime);
+							map.centerAndZoom(carPoint, 5);
+						} else {
+							console.log('地址空');
+						}
+					}
+					var end = new Date().getTime(); //接受时间
+					setTimeout(function() {
+						$('#load').hide();
+						addMark(huabei, '京津冀<br>' + huabeiArr.length, 80, 7);
+						addMark(changsanjiao, '长三角 <br>' + changsanjiaoArr.length, 80, 7);
+						addMark(huanan, '华南 <br>' + huananArr.length, 80, 7);
+						addMark(shandong, '山东 <br>' + shandongArr.length, 80, 7);
+						addMark(xibei, '西北 <br>' + xibeiArr.length, 80, 7);
+						addMark(dongbei, '东北 <br>' + dongbeiArr.length, 80, 7);
+						addMark(huazhong, '华中<br>' + huazhongArr.length, 80, 7);
+						addMark(xinan, '西南 <br>' + xinanArr.length, 80, 7);
+						addMark(huadong, '华东 <br>' + huadongArr.length, 80, 7);
+						addMark(xinjiangArea, '新疆 <br>' + xinjiangArr.length, 80, 7);
+						addMark(xizangArea, '西藏<br>' + xizangArr.length, 80, 7);
+					}, 1);
+					map.addEventListener("zoomend", function() {
+						map.clearOverlays();
+						var zoomend = this.getZoom();
+						if(zoomend < 7) {
+							addMark(huabei, '京津冀 <br>' + huabeiArr.length, 13 * zoomend, 7);
+							addMark(changsanjiao, '长三角  <br>' + changsanjiaoArr.length, 13 * zoomend, 7);
+							addMark(huanan, '华南  <br>' + huananArr.length, 13 * zoomend, 7);
+							addMark(shandong, '山东 <br>' + shandongArr.length, 13 * zoomend, 7);
+							addMark(xibei, '西北 <br>' + xibeiArr.length, 13 * zoomend, 7);
+							addMark(dongbei, '东北 <br>' + dongbeiArr.length, 13 * zoomend, 7);
+							addMark(huazhong, '华中 <br>' + huazhongArr.length, 13 * zoomend, 7);
+							addMark(xinan, '西南 <br>' + xinanArr.length, 13 * zoomend, 7);
+							addMark(huadong, '华东 <br>' + huadongArr.length, 13 * zoomend, 7);
+							addMark(xinjiangArea, '新疆 <br>' + xinjiangArr.length, 13 * zoomend, 7);
+							addMark(xizangArea, '西藏<br>' + xizangArr.length, 13 * zoomend, 7);
+							removeMymarkers();
+						} else if(7 >= zoomend && zoomend <= 8) {
+							addMark(hebei, '河北 <br>' + hebeiArr.length, 66, 8);
+							addMark(shanxi, '山西 <br>' + shanxiArr.length, 66, 8);
+							addMark(neimeng, '内蒙 <br>' + neimengArr.length, 66, 8);
+							addMark(liaoning, '辽宁 <br>' + liaoningArr.length, 66, 8);
+							addMark(heilongjiang, '黑龙江 <br>' + heilongjiangArr.length, 66, 8);
+							addMark(jilin, '吉林 <br>' + jilinArr.length, 66, 8);
+							addMark(shanghai, '上海 <br>' + shanghaiArr.length, 66, 8);
+							addMark(jiangsu, '江苏 <br>' + jiangsuArr.length, 66, 8);
+							addMark(zhejiang, '浙江<br>' + zhejiangArr.length, 66, 8);
+							addMark(anhui, '安徽 <br>' + anhuiArr.length, 66, 8);
+							addMark(fujian, '福建 <br>' + fujianArr.length, 66, 8);
+							addMark(jiangxi, '江西 <br>' + jiangxiArr.length, 66, 8);
+							addMark(guangdong, '广东 <br>' + guangdongArr.length, 66, 8);
+							addMark(guangxi, '广西 <br>' + guangxiArr.length, 66, 8);
+							addMark(hainan, '海南 <br>' + hainanArr.length, 66, 8);
+							addMark(henan, '河南 <br>' + henanArr.length, 66, 8);
+							addMark(hubei, '湖北 <br>' + hubeiArr.length, 66, 8);
+							addMark(hunan, '湖南<br>' + hunanArr.length, 66, 8);
+							addMark(sichuan, '四川 <br>' + sichuanArr.length, 66, 8);
+							addMark(guizhou, '贵州 <br>' + guizhouArr.length, 66, 8);
+							addMark(yunnan, '云南 <br>' + yunnanArr.length, 66, 8);
+							addMark(chongqing, '重庆 <br>' + chongqingArr.length, 66, 8);
+							addMark(xizang, '西藏 <br>' + xizangArr.length, 66, 8);
+							addMark(shanxisheng, '陕西 <br>' + shanxiArr.length, 66, 8);
+							addMark(gansu, '甘肃 <br>' + gansuArr.length, 66, 8);
+							addMark(qinghai, '青海 <br>' + qinghaiArr.length, 66, 8);
+							addMark(ningxia, '宁夏 <br>' + ningxiaArr.length, 66, 8);
+							addMark(xinjiang, '新疆 <br>' + xinjiangArr.length, 66, 8);
+							addMark(tianjin, '天津 <br>' + tianjinArr.length, 66, 10);
+							addMark(beijing, '北京 <br>' + beijingArr.length, 66, 10);
+						} else {
+							map.clearOverlays();
+							addMymarkers();
+						}
+
+					});
+					map.addEventListener("moveend", function() {
+						var zoomend = this.getZoom();
+						if(zoomend < 8) {
+							removeMymarkers();
+						} else {
+							addMymarkers();
+						}
+					});
+					//查询
+					$('#search_box').click(function() {
+						var _value = $.trim($('#boxNum').val()).toUpperCase();
+						var boxIndex = $.inArray(_value, boxNoArr);
+						if(boxIndex == -1) {
+							alert('没有此集装箱');
+						} else {
+							var point = new BMap.Point(res[boxIndex].longitude, res[boxIndex].latitude);
+							map.centerAndZoom(point, 12);
+							var carHtml = '<ul class="Msg"><li>箱号：' + res[boxIndex].boxNo + '</li><li>箱子状态：' + res[boxIndex].state + '</li><li>发运站：' + res[boxIndex].startPoint + '</li><li>目的站：' + res[boxIndex].endPoint + '</li><li>定位地点：' + res[boxIndex].location + '</li><li style="border:none;">定位时间：' + res[boxIndex].daUp + '</li></ui>';
+							var searchInfoWindow3 = new BMapLib.SearchInfoWindow(map, carHtml, {
+								title: "集装箱实时动态", //标题
+								width: 290, //宽度
+								panel: "panel", //检索结果面板
+								enableAutoPan: true, //自动平移
+								searchTypes: []
+							});
+							searchInfoWindow3.open(point);
+						}
+					});
+				}
+			});
+			function carMsg(point, number, startPoint, endPoint, nowState, state, nowTime) {
+				geoc.getLocation(point, function(rs) {
+					var addComp = rs.addressComponents;
+					var address = addComp.province + ", " + addComp.city;
+					var carHtml = '<ul class="Msg"><li>箱号：' + number + '</li><li>箱子状态：' + state + '</li><li>发运站：' + startPoint + '</li><li>目的站：' + endPoint + '</li><li>定位地点：' + address + '</li><li style="border:none;">定位时间：' + nowTime + '</li></ui>';
+					var searchInfoWindow3 = new BMapLib.SearchInfoWindow(map, carHtml, {
+						title: "集装箱实时动态", //标题
+						width: 290, //宽度
+						panel: "panel", //检索结果面板
+						enableAutoPan: true, //自动平移
+						searchTypes: []
+					});
+					switch(nowState) {
+						case 0:
+							var emptyOnline = new BMap.Icon("images/car_icon2.png", new BMap.Size(32, 32));
+							var marker1 = new BMap.Marker(point, {
+								icon: emptyOnline
+							});
+							markers.push(marker1);
+							marker1.addEventListener("click", function(e) {
+								openInfoWindow3(point);
+								stopProp(e);
+							});
+							break;
+						case 1:
+							var emptyOffline = new BMap.Icon("images/car-icon3.png", new BMap.Size(32, 32));
+							var marker2 = new BMap.Marker(point, {
+								icon: emptyOffline
+							});
+							markers.push(marker2);
+							marker2.addEventListener("click", function(e) {
+								openInfoWindow3(point);
+								stopProp(e);
+							});
+							break;
+						case 2:
+							var fullOffline = new BMap.Icon("images/car_icon.png", new BMap.Size(32, 32));
+							var marker3 = new BMap.Marker(point, {
+								icon: fullOffline
+							});
+							markers.push(marker3);
+							marker3.addEventListener("click", function(e) {
+								openInfoWindow3(point);
+								stopProp(e);
+							});
+							break;
+						case 3:
+							var fullOnline = new BMap.Icon("images/car-icon1.png", new BMap.Size(32, 32));
+							var marker4 = new BMap.Marker(point, {
+								icon: fullOnline
+							});
+							markers.push(marker4);
+							marker4.addEventListener("click", function(e) {
+								openInfoWindow3(point);
+								stopProp(e);
+							});
+							break;
+					}
+					function openInfoWindow3(point) {
+						searchInfoWindow3.open(point);
+					}
+				});
+			}
+		});
+	</script>
+</html>
